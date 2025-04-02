@@ -1,0 +1,22 @@
+{
+  "name": "@oggeh/web-component",
+  "version": "1.0.0",
+  "description": "Web Component implementation for OGGEH Cloud Platform",
+  "main": "./dist/index.js",
+  "browser": "./dist/oggeh.min.js",
+  "files": [
+    "dist/**/**/*"
+  ],
+  "repository": "https://github.com/oggeh-dev/web-component.git",
+  "author": "OGGEH, Inc",
+  "license": "MIT",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --minify --sourcemap --target=es2020 --keep-names --outfile=dist/oggeh.min.js"
+  },
+  "dependencies": {
+    "@oggeh/js-sdk": "^1.0.6"
+  },
+  "devDependencies": {
+    "esbuild": "^0.17.16"
+  }
+}
