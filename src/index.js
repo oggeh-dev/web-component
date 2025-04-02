@@ -516,17 +516,17 @@ class OggehContent extends HTMLElement {
   }
 
   #handleForm(el) {
-    const form = el.querySelector('[data-oggeh-process-form]');
+    const form = el.querySelector('[data-oggeh-form-post]');
     if (!form) return;
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const formData = new FormData(form);
       const data = Object.fromEntries(formData);
-      this.#processForm(form, data);
+      this.#processForm(el, form, data);
     });
   }
 
-  async #processForm(form, data) {
+  async #processForm(el, form, data) {
     const event = {
       process: 'form',
     };
@@ -545,17 +545,21 @@ class OggehContent extends HTMLElement {
       event.error = error.message;
     }
     if (event.error) {
-      this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
+      const alert = el.querySelector('[data-oggeh-form-error]');
+      if (alert) alert.style.setProperty('display', 'block', 'important');
+      document.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
         bubbles: true,
         detail: event,
       }));
     } else {
-      this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
+      const alert = el.querySelector('[data-oggeh-form-success]');
+      if (alert) alert.style.setProperty('display', 'block', 'important');
+      document.dispatchEvent(new CustomEvent(OggehEvent.READY, {
         bubbles: true,
         detail: event,
       }));
     }
-    form?.reset?.();
+    form.reset();
   }
 
   #injectMeta(data) {
