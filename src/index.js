@@ -210,10 +210,9 @@ class OggehSDK {
     return output;
   }
 
-  async submitContactForm(formData) {
+  async getFormToken(key) {
     this.status = OggehStatus.PENDING;
     try {
-      const key = 'contact';
       const token = await this.oggeh
         .get({
           alias: 'token',
@@ -221,31 +220,39 @@ class OggehSDK {
           key,
         })
         .promise();
-      // TODO: Handle error
       this.status = OggehStatus.SUCCESS;
-      return await this.oggeh
-        .post({ alias: 'response', method: 'post.contact.form', key, token, ...formData });
+      return token;
     } catch (error) {
       this.status = OggehStatus.ERROR;
+      this.error = error.message;
     }
     return;
   }
 
-  async submitPageForm(key, formData) {
+  async submitContactForm(formData) {
     this.status = OggehStatus.PENDING;
     try {
-      const token = await this.oggeh
-        .get({
-          alias: 'token',
-          method: 'get.form.token',
-          key,
-        })
-        .promise();
-      // TODO: Handle error
+      const output = await this.oggeh
+        .post({ alias: 'response', method: 'post.contact.form', key: 'contact', ...formData });
       this.status = OggehStatus.SUCCESS;
-      return await this.oggeh.post({ alias: 'response', method: 'post.page.form', key, token, ...formData });
+      return output;
     } catch (error) {
       this.status = OggehStatus.ERROR;
+      this.error = error.message;
+    }
+    return;
+  }
+
+  async submitPageForm(formData) {
+    this.status = OggehStatus.PENDING;
+    try {
+      const output = await this.oggeh
+        .post({ alias: 'response', method: 'post.page.form', ...formData });
+      this.status = OggehStatus.SUCCESS;
+      return output;
+    } catch (error) {
+      this.status = OggehStatus.ERROR;
+      this.error = error.message;
     }
     return;
   }
@@ -410,6 +417,7 @@ class OggehContent extends HTMLElement {
           }
         }
       } else {
+        if (data?.key) data.token = await this.oggeh.getFormToken(data.key);
         this.#renderContent(get, data);
       }
     }
@@ -455,9 +463,6 @@ class OggehContent extends HTMLElement {
         },
       }));
     });
-
-    if (location.pathname !== '/' && location.pathname.startsWith('/') && !(location.pathname.endsWith('.html') || location.pathname.includes('.html?')))
-      this.#loadTemplate(location.pathname);
 
     this.remove();
   }
@@ -508,6 +513,49 @@ class OggehContent extends HTMLElement {
         document.body.appendChild(script);
       });
     }
+  }
+
+  #handleForm(el) {
+    const form = el.querySelector('[data-oggeh-process-form]');
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData);
+      this.#processForm(form, data);
+    });
+  }
+
+  async #processForm(form, data) {
+    const event = {
+      process: 'form',
+    };
+    try {
+      const output = await this.oggeh.submitPageForm(data);
+      if (this.oggeh.status === OggehStatus.ERROR) {
+        event.error = this.oggeh.error;
+        this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
+          bubbles: true,
+          detail: event,
+        }));
+      } else {
+        event.data = output;
+      }
+    } catch (error) {
+      event.error = error.message;
+    }
+    if (event.error) {
+      this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
+        bubbles: true,
+        detail: event,
+      }));
+    } else {
+      this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
+        bubbles: true,
+        detail: event,
+      }));
+    }
+    form?.reset?.();
   }
 
   #injectMeta(data) {
@@ -686,6 +734,7 @@ class OggehContent extends HTMLElement {
           this.insertAdjacentText('afterend', child.textContent);
         } else {
           this.insertAdjacentElement('afterend', child);
+          this.#handleForm(child);
         }
       }
       this.remove();
@@ -870,6 +919,8 @@ class OggehContent extends HTMLElement {
           }
           fieldsHTML += fillTemplate(html, field, { index: idx, blockId: getBlockId(idx) });
         });
+        if (data?.key) fieldsHTML += `<input type="hidden" name="key" value="${data.key}">`;
+        if (data?.token) fieldsHTML += `<input type="hidden" name="token" value="${data.token}">`;
         const slot = containerClone.querySelector('slot');
         if (slot) {
           slot.insertAdjacentHTML('afterend', fieldsHTML);
@@ -877,7 +928,6 @@ class OggehContent extends HTMLElement {
           const formEl = containerClone.querySelector('form');
           if (formEl) formEl.insertAdjacentHTML('beforeend', fieldsHTML);
         }
-        // TODO: inject hidden input with form token
         fragment.appendChild(containerClone.firstElementChild);
       }
 
