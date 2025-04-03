@@ -890,20 +890,20 @@ class OggehContent extends HTMLElement {
             break;
           case 'media':
             const hasPhotos = item.media.filter(({type}) => type === 'photo').length > 1;
-            if (hasPhotos) addMediaBlock('photos', item.media);
+            if (hasPhotos) addMediaBlock('photos', index, item);
             const hasAudio = item.media.filter(({type}) => type === 'audio').length > 1;
-            if (hasAudio) addMediaBlock('audio', item.media);
+            if (hasAudio) addMediaBlock('audio', index, item);
             const hasVideos = item.media.filter(({type}) => type === 'video').length > 1;
-            if (hasVideos) addMediaBlock('videos', item.media);
+            if (hasVideos) addMediaBlock('videos', index, item);
             break;
           case 'files':
-            addFilesBlock(item.files);
+            addFilesBlock(item, index);
             break;
           case 'table':
-            addTableBlock(item.table);
+            addTableBlock(item, index);
             break;
           case 'form':
-            addFormBlock(item.form);
+            addFormBlock(item, index);
             break;
         }
       });
@@ -919,26 +919,34 @@ class OggehContent extends HTMLElement {
         for (const block of blocks) fragment.appendChild(block);
       }
 
-      function addMediaBlock(type, items) {
+      function addMediaBlock(type, index, item) {
         const tpl = templates[type];
         if (!tpl) return;
         const clone = document.importNode(tpl.content, true);
-        processIterables(clone, items);
+        processIterables(clone, item.media);
         const blocks = Array.from(clone.childNodes).filter(b => b.nodeType === Node.ELEMENT_NODE);
-        for (const block of blocks) fragment.appendChild(block);
+        for (const block of blocks) {
+          block.classList.value = fillTemplate(block.classList.value, item, {blockId: getBlockId(index)});
+          block.innerHTML = fillTemplate(block.innerHTML, item, {blockId: getBlockId(index)});
+          fragment.appendChild(block);
+        }
       }
 
-      function addFilesBlock(item) {
+      function addFilesBlock(item, index) {
         const tpl = templates.files;
         if (!tpl) return;
         const clone = document.importNode(tpl.content, true);
-        processIterables(clone, item);
+        processIterables(clone, item.files);
         const blocks = Array.from(clone.childNodes).filter(b => b.nodeType === Node.ELEMENT_NODE);
-        for (const block of blocks) fragment.appendChild(block);
+        for (const block of blocks) {
+          block.classList.value = fillTemplate(block.classList.value, item, {blockId: getBlockId(index)});
+          block.innerHTML = fillTemplate(block.innerHTML, item, {blockId: getBlockId(index)});
+          fragment.appendChild(block);
+        }
       }
 
-      function addTableBlock(item) {
-        if (!Array.isArray(item) || item.length < 2) return;
+      function addTableBlock(item, index) {
+        if (!Array.isArray(item.table) || item.table.length < 2) return;
         const tpl = templates.table;
         const containerClone = document.importNode(tpl.content, true);
         // we cannot use DocumentFragment here because of the restricted HTML content model for the table element
@@ -948,7 +956,7 @@ class OggehContent extends HTMLElement {
         let tbody = tableEl.querySelector('tbody');
         if (!thead) thead = document.createElement('thead'); tableEl.prepend(thead);
         if (!tbody) tbody = document.createElement('tbody'); tableEl.appendChild(tbody);
-        const headerData = item[0];
+        const headerData = item.table[0];
         let headerHTML = '';
         headerData.forEach((cellValue, colIndex) => {
           const headerCellTpl = templates.tableHeaderCell;
@@ -958,7 +966,7 @@ class OggehContent extends HTMLElement {
         headerTr.innerHTML = headerHTML;
         thead.innerHTML = '';
         thead.appendChild(headerTr);
-        const bodyRows = item.slice(1);
+        const bodyRows = item.table.slice(1);
         tbody.innerHTML = '';
         bodyRows.forEach((rowData) => {
           let rowHTML = '';
@@ -970,15 +978,17 @@ class OggehContent extends HTMLElement {
           rowTr.innerHTML = rowHTML;
           tbody.insertAdjacentElement('beforeend', rowTr);
         });
+        containerClone.firstElementChild.classList.value = fillTemplate(containerClone.firstElementChild.classList.value, item, {blockId: getBlockId(index)});
+        containerClone.firstElementChild.innerHTML = fillTemplate(containerClone.firstElementChild.innerHTML, item, {blockId: getBlockId(index)});
         fragment.appendChild(containerClone.firstElementChild);
       }
 
-      function addFormBlock(item) {
-        if (!Array.isArray(item)) return;
+      function addFormBlock(item, index) {
+        if (!Array.isArray(item.form)) return;
         const tpl = templates.form;
         const containerClone = document.importNode(tpl.content, true);
         let fieldsHTML = '';
-        item.forEach((field, idx) => {
+        item.form.forEach((field, idx) => {
           let fieldTpl;
           switch (field.type) {
             case 'header':
@@ -1057,6 +1067,8 @@ class OggehContent extends HTMLElement {
           const formEl = containerClone.querySelector('form');
           if (formEl) formEl.insertAdjacentHTML('beforeend', fieldsHTML);
         }
+        containerClone.firstElementChild.classList.value = fillTemplate(containerClone.firstElementChild.classList.value, item, {blockId: getBlockId(index)});
+        containerClone.firstElementChild.innerHTML = fillTemplate(containerClone.firstElementChild.innerHTML, item, {blockId: getBlockId(index)});
         fragment.appendChild(containerClone.firstElementChild);
       }
 
