@@ -17,6 +17,19 @@ const OggehEvent = {
 
 const OggehRoutes = ['page', 'news', 'article', 'albums', 'search', 'contact'];
 
+class OggehData {
+  constructor() {
+    this.data = JSON.parse(localStorage.getItem('oggeh.data') || '{}');
+  }
+  get(key) {
+    return this.data[key];
+  }
+  set(key, value) {
+    this.data = objectDeepMerge(this.data, {[key]: value});
+    localStorage.setItem('oggeh.data', JSON.stringify(this.data));
+  }
+}
+
 class OggehSDK {
 
   constructor({api_key, sandbox_key = '', domain = location.hostname, endpoint = 'https://api.oggeh.com', lang = 'en'}) {
@@ -26,9 +39,10 @@ class OggehSDK {
     this.endpoint = endpoint;
     this.status = OggehStatus.IDLE;
     this.error = '';
-    this.data = {
-      news: [],
-    };
+    this.data = new OggehData();
+    if (!this.data.get('news')) this.data.set('news', []);
+    if (!window.oggeh) window.oggeh = {};
+    window.oggeh.data = this.data;
     this.refetch(String(lang).split('-')[0]);
   }
 
@@ -64,6 +78,7 @@ class OggehSDK {
         this.error = data;
         return;
       }
+      this.data.set('news', data.news);
       this.status = OggehStatus.SUCCESS;
       return data;
     } catch (error) {
@@ -79,8 +94,8 @@ class OggehSDK {
     try {
       const res = {};
       if (start_key) {
-        const {[start_key]: page} = await this.oggeh
-          .get({ alias: start_key, method: 'get.page', key: start_key, select: 'key,subject,header,cover,blocks' })
+        const page = await this.oggeh
+          .get({ method: 'get.page', key: start_key, select: 'key,subject,header,cover,blocks' })
           .promise();
         if (typeof page === 'string' || !page) {
           this.status = OggehStatus.ERROR;
@@ -90,7 +105,7 @@ class OggehSDK {
         res.page = page;
       }
       const output = await this.oggeh
-        .get({ alias: model, method: 'get.pages', model, only_models: true, ...(start_key ? {start_key} : {}), select: 'key,subject,header,cover,blocks' })
+        .get({ method: 'get.pages', model, only_models: true, ...(start_key ? {start_key} : {}), select: 'key,subject,header,cover,blocks' })
         .promise();
       if (typeof output === 'string' || !output) {
         this.status = OggehStatus.ERROR;
@@ -105,6 +120,18 @@ class OggehSDK {
       this.error = error.message;
     }
     return;
+  }
+
+  async getPages(start_key = '', limit = 4) {
+    const output = await this.oggeh
+      .get({ method: 'get.pages', ...(start_key ? {start_key} : {}), limit, select: 'timestamp,subject,header,cover,tags' })
+      .promise();
+    if (typeof output === 'string' || !output) {
+      this.status = OggehStatus.ERROR;
+      this.error = output;
+      return;
+    }
+    return {list: output};
   }
 
   async getPage(key, model) {
@@ -133,12 +160,24 @@ class OggehSDK {
     return;
   }
 
+  async getPageRelated(key) {
+    const output = await this.oggeh
+      .get({ method: 'get.page.related', key, limit: 4, select: 'timestamp,subject,header,cover,tags' })
+      .promise();
+    if (typeof output === 'string' || !output) {
+      this.status = OggehStatus.ERROR;
+      this.error = output;
+      return;
+    }
+    return {list: output};
+  }
+
   async getSearchResults(keyword) {
     if (!keyword) return;
     this.status = OggehStatus.PENDING;
     try {
-      const {results: output} = await this.oggeh
-        .get({ alias: 'results', method: 'get.search.results', keyword, target: 'pages,news' })
+      const output = await this.oggeh
+        .get({ method: 'get.search.results', keyword, target: 'pages,news' })
         .promise();
       if (typeof output === 'string' || !output) {
         this.status = OggehStatus.ERROR;
@@ -146,7 +185,7 @@ class OggehSDK {
         return;
       }
       this.status = OggehStatus.SUCCESS;
-      return {[keyword]: output.map(({items}) => items).flat()}
+      return output.map(({items}) => items).flat();
     } catch (error) {
       this.status = OggehStatus.ERROR;
       this.error = error.message;
@@ -154,11 +193,13 @@ class OggehSDK {
     return;
   }
 
-  async getNewsArticle(timestamp) {
-    if (!timestamp) return;
+  async getNewsArticle(start_date) {
+    if (!start_date) return;
     this.status = OggehStatus.PENDING;
     try {
-      const {news: output} = await this.oggeh.get({ alias: 'news', method: 'get.news', start_date: String(timestamp), limit: 1, select: 'timestamp,subject,header,cover,blocks,tags' }).promise();
+      const output = await this.oggeh
+        .get({ method: 'get.news', start_date, limit: 1, select: 'timestamp,subject,header,cover,blocks,tags' })
+        .promise();
       if (typeof output === 'string' || !output) {
         this.status = OggehStatus.ERROR;
         this.error = output;
@@ -177,20 +218,20 @@ class OggehSDK {
   async getNews(start_date, limit = 2) {
     this.status = OggehStatus.PENDING;
     try {
-      const start = start_date && this.data.news.length ? this.data.news.findIndex((article) => article?.timestamp === start_date) : 0;
-      const cache = this.data.news.slice(start, start + limit);
-      if (cache.length) return {articles: cache, previous: this.data.news[start - limit]?.timestamp, next: this.data.news[start + limit]?.timestamp};
-      const {news: output} = await this.oggeh
-        .get({ alias: 'news', method: 'get.news', ...(start_date ? {start_date: String(start_date)} : {}), limit, select: 'timestamp,subject,header,cover,tags' })
+      const start = start_date && this.data.get('news').length ? this.data.get('news').findIndex((article) => article?.timestamp === start_date) : 0;
+      const list = await this.oggeh
+        .get({ method: 'get.news', ...(start_date ? {start_date} : {}), limit, select: 'timestamp,subject,header,cover,tags' })
         .promise();
-      if (typeof output === 'string' || !output) {
+      if (typeof list === 'string' || !list) {
         this.status = OggehStatus.ERROR;
-        this.error = output;
+        this.error = list;
         return;
       }
-      this.data.news = [...this.data.news, ...output];
+      this.data.set('news', list);
       this.status = OggehStatus.SUCCESS;
-      return {articles: output, previous: this.data.news[start - limit]?.timestamp, next: output[output.length]?.timestamp};
+      const previous = this.data.get('news')[start - limit]?.timestamp;
+      const next = list[list.length - 1]?.timestamp;
+      return {list, previous, next};
     } catch (error) {
       this.status = OggehStatus.ERROR;
       this.error = error.message;
@@ -198,27 +239,30 @@ class OggehSDK {
     return;
   }
 
-  async getNewsRelated(timestamp) {
-    const {news: output} = await this.oggeh
-      .get({ alias: 'news', method: 'get.news.related', timestamp: String(timestamp || this.data.news?.[0]?.timestamp), limit: 4, select: 'timestamp,subject,header,cover,tags' })
+  async getNewsRelated(timestamp, limit = 4) {
+    const output = await this.oggeh
+      .get({ method: 'get.news.related', timestamp: timestamp || this.data.get('news')?.[0]?.timestamp || getDefaultTimestamp(), limit, select: 'timestamp,subject,header,cover,tags' })
       .promise();
     if (typeof output === 'string' || !output) {
       this.status = OggehStatus.ERROR;
       this.error = output;
       return;
     }
-    return output;
+    return {list: output};
+
+    function getDefaultTimestamp() {
+      const date = new Date();
+      date.setMonth(0);
+      date.setDate(1);
+      return Math.floor(date.getTime() / 1000);
+    }
   }
 
   async getFormToken(key) {
     this.status = OggehStatus.PENDING;
     try {
       const token = await this.oggeh
-        .get({
-          alias: 'token',
-          method: 'get.form.token',
-          key,
-        })
+        .get({method: 'get.form.token', key})
         .promise();
       this.status = OggehStatus.SUCCESS;
       return token;
@@ -233,7 +277,7 @@ class OggehSDK {
     this.status = OggehStatus.PENDING;
     try {
       const output = await this.oggeh
-        .post({ alias: 'response', method: 'post.contact.form', key: 'contact', ...formData });
+        .post({ method: 'post.contact.form', key: 'contact', ...formData });
       this.status = OggehStatus.SUCCESS;
       return output;
     } catch (error) {
@@ -247,7 +291,7 @@ class OggehSDK {
     this.status = OggehStatus.PENDING;
     try {
       const output = await this.oggeh
-        .post({ alias: 'response', method: 'post.page.form', ...formData });
+        .post({ method: 'post.page.form', ...formData });
       this.status = OggehStatus.SUCCESS;
       return output;
     } catch (error) {
@@ -297,12 +341,14 @@ class OggehContent extends HTMLElement {
         return;
     }
     let event;
-    const get = this.getAttribute('get');
+    let get = this.getAttribute('get');
+    const custom = this.getAttribute('custom');
+    if (!get) get = custom;
     if (!get) {
       event = {
         data: {
           get,
-          error: 'Missing required get attribute',
+          error: `Missing required get/custom attribute`,
         },
       };
       this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
@@ -311,8 +357,8 @@ class OggehContent extends HTMLElement {
       }));
       return;
     }
-    const method = `get${get.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('')}`;
-    if (typeof this.oggeh[method] !== 'function') {
+    const method = `get${getMethodName(get || custom)}`;
+    if (typeof this.oggeh[method] !== 'function' && typeof window.oggeh[method] !== 'function') {
       event = {
         data: {
           get,
@@ -329,11 +375,11 @@ class OggehContent extends HTMLElement {
 
     const key = this.getAttribute('key') || this.#getRequestParam('key') || '';
     const startKey = this.getAttribute('start-key') || this.#getRequestParam('start-key') || '';
-    const timestamp = this.getAttribute('timestamp') || this.#getRequestParam('timestamp') || '';
-    const startDate = this.getAttribute('start-date') || this.#getRequestParam('start-date') || '';
+    const timestamp = Number(this.getAttribute('timestamp') || this.#getRequestParam('timestamp') || '0');
+    const startDate = Number(this.getAttribute('start-date') || this.#getRequestParam('start-date') || '0');
     const model = this.getAttribute('model') || this.#getRequestParam('model') || '';
     const keyword = this.getAttribute('keyword') || this.#getRequestParam('keyword') || '';
-    const limit = Number(this.getAttribute('limit') || this.#getRequestParam('limit') || '1');
+    const limit = Number(this.getAttribute('limit') || this.#getRequestParam('limit') || '2');
 
     let data;
     switch (method) {
@@ -356,8 +402,14 @@ class OggehContent extends HTMLElement {
       case 'getModel':
         data = await this.oggeh[method](model, startKey);
         break;
+      case 'getPages':
+        data = await this.oggeh[method](startKey, limit);
+        break;
       case 'getPage':
         data = await this.oggeh[method](key, model);
+        break;
+      case 'getPageRelated':
+        data = await this.oggeh[method](key);
         break;
       case 'getSearchResults':
         data = await this.oggeh[method](keyword);
@@ -366,13 +418,17 @@ class OggehContent extends HTMLElement {
         data = await this.oggeh[method](startDate, limit);
         break;
       case 'getNewsArticle':
-        data = await this.oggeh[method](timestamp);
-        break;
       case 'getNewsRelated':
         data = await this.oggeh[method](timestamp);
         break;
       default:
-        data = await this.oggeh[method]();
+        if (typeof window.oggeh[method] === 'function') {
+          await this.#isComplete();
+          // expected to be defined in the window.oggeh object
+          data = await window.oggeh[method]();
+        } else {
+          data = await this.oggeh[method]();
+        }
         break;
     }
     if (this.oggeh.status === OggehStatus.ERROR) {
@@ -399,7 +455,7 @@ class OggehContent extends HTMLElement {
           event.data = {slider: event.data.slider};
           break;
       }
-      OggehContent.events.push(event);
+      if (!custom) OggehContent.events.push(event);
       this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
         bubbles: true,
         detail: event,
@@ -416,10 +472,18 @@ class OggehContent extends HTMLElement {
               break;
           }
         }
+      } else if (Array.isArray(data)) {
+        // works only with data-oggeh-iterable
+        this.#renderList(get, data);
       } else {
         if (data?.key) data.token = await this.oggeh.getFormToken(data.key);
+        // can handle oggeh-iterable template
         this.#renderContent(get, data);
       }
+    }
+
+    function getMethodName(value) {
+      return value.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
     }
   }
 
@@ -463,8 +527,6 @@ class OggehContent extends HTMLElement {
         },
       }));
     });
-
-    this.remove();
   }
 
   #reset() {
@@ -499,7 +561,6 @@ class OggehContent extends HTMLElement {
         if (!src) continue;
         await inject({src, isAsync, isDefer});
       }
-      this.remove();
     });
 
     async function inject({src, isAsync = false, isDefer = false}) {
@@ -630,10 +691,7 @@ class OggehContent extends HTMLElement {
       return;
     }
     const navigationElement = constructNavigation();
-    if (navigationElement) {
-      this.insertAdjacentElement('afterend', navigationElement);
-      this.remove();
-    }
+    if (navigationElement) this.insertAdjacentElement('afterend', navigationElement);
     OggehContent.state.nav = true;
 
     function buildNavItems(items) {
@@ -673,6 +731,59 @@ class OggehContent extends HTMLElement {
       const slot = containerClone.querySelector('slot');
       if (slot) slot.parentNode.replaceChild(fragment, slot);
       return containerClone.firstElementChild;
+    }
+  }
+
+  #renderList(get, data) {
+    const templates = {
+      container: this.querySelector('template#oggeh-container'),
+    };
+    if (!templates.container) {
+      const event = {
+        data: {
+          get,
+          error: 'Missing required container template',
+        },
+      };
+      this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
+        bubbles: true,
+        detail: event,
+      }));
+      return;
+    } else if (!Array.isArray(data)) {
+      const event = {
+        data: {
+          get,
+          error: 'Data is not iterable',
+        },
+      };
+      this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
+        bubbles: true,
+        detail: event,
+      }));
+      return;
+    }
+
+    const contentElement = constructContent();
+    if (Array.isArray(contentElement)) {
+      for (const child of contentElement) {
+        if (child.nodeType === Node.COMMENT_NODE) continue;
+        if (child.nodeType === Node.TEXT_NODE) {
+          this.insertAdjacentText('afterend', child.textContent);
+        } else {
+          this.insertAdjacentElement('afterend', child);
+        }
+      }
+    }
+
+    function constructContent() {
+      const tpl = templates.container;
+      const containerClone = document.importNode(tpl.content, true);
+      processIterables(containerClone, data);
+      if (!containerClone.firstElementChild.innerHTML) return;
+      const clone = document.createElement('div');
+      clone.innerHTML = fillTemplate(containerClone.firstElementChild.innerHTML, data, {blockId: getBlockId()});
+      return Array.from(clone.childNodes).reverse();
     }
   }
 
@@ -716,7 +827,7 @@ class OggehContent extends HTMLElement {
         detail: event,
       }));
       return;
-    } else if (templates.iterable && !Array.isArray(data)) {
+    } else if (templates.iterable && !Array.isArray(data?.list)) {
       const event = {
         data: {
           get,
@@ -741,7 +852,6 @@ class OggehContent extends HTMLElement {
           this.#handleForm(child);
         }
       }
-      this.remove();
     }
 
     function buildIterableItems(items) {
@@ -942,8 +1052,8 @@ class OggehContent extends HTMLElement {
       const containerClone = document.createElement('div');
       containerClone.innerHTML = html;
       let fragment;
-      if (templates.iterable && Array.isArray(data)) {
-        fragment = buildIterableItems(data);
+      if (templates.iterable && Array.isArray(data?.list)) {
+        fragment = buildIterableItems(data.list);
       } else if (Array.isArray(data?.blocks)) {
         fragment = buildBlocks(data.blocks);
       }
@@ -957,6 +1067,72 @@ class OggehContent extends HTMLElement {
   }
 }
 
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (let key of keysA) {
+    if (!deepEqual(a[key], b[key])) return false;
+  }
+  return true;
+}
+
+function mergeArrays(arr1, arr2) {
+  const merged = [...arr1];
+
+  arr2.forEach(item => {
+    let found = false;
+    for (let i = 0; i < merged.length; i++) {
+      if (deepEqual(merged[i], item)) {
+        // If both items are objects, merge them deeply.
+        if (merged[i] && typeof merged[i] === 'object' && item && typeof item === 'object') {
+          merged[i] = objectDeepMerge(merged[i], item);
+        }
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      merged.push(item);
+    }
+  });
+
+  return merged;
+}
+
+function objectDeepMerge(...objects) {
+  const isObject = (obj) => obj && typeof obj === 'object' && !Array.isArray(obj);
+
+  return objects.reduce((prev, obj) => {
+    Object.keys(obj).forEach(key => {
+      const pVal = prev[key];
+      const oVal = obj[key];
+
+      if (Array.isArray(pVal) && Array.isArray(oVal)) {
+        prev[key] = mergeArrays(pVal, oVal);
+      } else if (isObject(pVal) && isObject(oVal)) {
+        prev[key] = objectDeepMerge(pVal, oVal);
+      } else {
+        prev[key] = oVal;
+      }
+    });
+    return prev;
+  }, {});
+}
+
 function getBlockId(index = 0) {
   return `${(Date.now() + Math.random()).toString(36)}.${index}`;
 }
@@ -964,53 +1140,95 @@ function getBlockId(index = 0) {
 function fillTemplate(templateStr, data, { index = 0, blockId = '' } = {}) {
   return templateStr
       .replace(/=""/g, '') // fix placeholder if mutated by the HTML content model restrictions
-      .replace(/{{\s*([^}]+)\s*}}/g, (match, expression) => {
-    const parts = expression.trim().split('.');
-    let value = data;
-    for (let part of parts) {
-      if (part.includes('=')) {
-        const parts = part.split('=').map(p => p.trim());
-        const position = parts.pop();
-        const token = parts.join('=');
-        if (Number(position) === index) {
-          value = token;
-          continue;
+      .replace(/{{\s*([^}]+)\s*}}/g, (match, input) => {
+    const [expression, modifier] = input.trim().split('|').map(p => p.trim());
+    let value = getValue(expression);
+    if (modifier) {
+      if (modifier.includes('is')) {
+        const evaluate = modifier.match(/is\((.*)\)/)?.[1];
+        if (data[evaluate]) {
+          return expression;
+        } else {
+          return '';
         }
-      }
-      if (part === 'block_id') {
-        value = blockId;
-        continue;
-      }
-      if (part === 'required') {
-        value = data.required ? '*' : '';
-        continue;
-      }
-      if (part === '*') {
-        value = index;
-        continue;
-      }
-      if (part === '[*]') {
-        value = Array.isArray(value) ? value[index] : undefined;
-        continue;
-      }
-      // Handle array index notation (e.g. name[0] or option_label[1])
-      const arrMatch = part.match(/^([^\[\]]+)(?:\[(\d+|\*)\])?$/);
-      if (arrMatch) {
-        const key = arrMatch[1];
-        let idx = arrMatch[2];
-        value = value ? value[key] : undefined;
-        if (idx !== undefined) {
-          if (idx === '*') {
-            value = Array.isArray(value) ? value[index] : undefined;
-          } else {
-            value = Array.isArray(value) ? value[Number(idx)] : undefined;
-          }
+      } else if (modifier.includes('fallback')) {
+        const fallback = modifier.match(/fallback\(['"](.*)['"]\)/)?.[1];
+        if (!value) return fallback;
+      } else if (modifier.includes('join')) {
+        const separator = modifier.match(/join\(['"](.*)['"]\)/)?.[1];
+        if (Array.isArray(value)) {
+          return value.join(separator);
+        } else {
+          return '';
         }
+      } else if (modifier === 'formatDate') {
+        if (!value) return '';
+        return new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "2-digit"
+        }).format(new Date(Number(value) * 1000));
+      } else if (modifier === 'formatTime') {
+        if (!value) return '';
+        return new Intl.DateTimeFormat("en-US", {
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric"
+        }).format(new Date(Number(value) * 1000));
       } else {
-        value = value ? value[part] : undefined;
+        return value || getValue(modifier) || '';
       }
     }
     return (value !== undefined && value !== null) ? value : '';
+
+    function getValue(expression) {
+      const parts = expression.split('.');
+      let value = data;
+      for (let part of parts) {
+        if (part.includes('=')) {
+          const parts = part.split('=').map(p => p.trim());
+          const position = parts.pop();
+          const token = parts.join('=');
+          if (Number(position) === index) {
+            value = token;
+            continue;
+          }
+        }
+        if (part === 'block_id') {
+          value = blockId;
+          continue;
+        }
+        if (part === 'required') {
+          value = data.required ? '*' : '';
+          continue;
+        }
+        if (part === '*') {
+          value = index;
+          continue;
+        }
+        if (part === '[*]') {
+          value = Array.isArray(value) ? value[index] : undefined;
+          continue;
+        }
+        const arrMatch = part.match(/^([^\[\]]+)(?:\[(\d+|\*)\])?$/);
+        if (arrMatch) {
+          const key = arrMatch[1];
+          let idx = arrMatch[2];
+          if (typeof value !== 'object') continue;
+          value = value ? value[key] : undefined;
+          if (idx !== undefined) {
+            if (idx === '*') {
+              value = Array.isArray(value) ? value[index] : undefined;
+            } else {
+              value = Array.isArray(value) ? value[Number(idx)] : undefined;
+            }
+          }
+        } else {
+          value = value ? value[part] : undefined;
+        }
+      }
+      return value;
+    }
   });
 }
 
