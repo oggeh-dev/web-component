@@ -1,21 +1,39 @@
 import '@oggeh/js-sdk';
 
 const OggehTag = 'oggeh-content';
-
+const OggehAntiFlickerId = 'oggeh-anti-flicker';
 const OggehStatus = {
   IDLE: 'idle',
   PENDING: 'pending',
   SUCCESS: 'success',
   ERROR: 'error',
 };
-
 const OggehEvent = {
   READY: 'oggeh.ready',
   ERROR: 'oggeh.error',
   NAVIGATE: 'oggeh.navigate',
 };
-
-const OggehRoutes = ['page', 'news', 'article', 'albums', 'search', 'contact'];
+const OggehRoutes = {
+  PAGE: 'page',
+  NEWS: 'news',
+  ARTICLE: 'article',
+  ALBUMS: 'albums',
+  SEARCH: 'search',
+  CONTACT: 'contact',
+};
+const OggehConfig = {
+  ANTI_FLICKER: 'anti-flicker',
+  ROUTER: 'router',
+  SCRIPTS: 'scripts',
+};
+const OggehRender = {
+  META: 'meta',
+  NAV: 'nav',
+  SLIDER: 'slider',
+  LOCATIONS: 'locations',
+  SOCIAL: 'social',
+  CONTACT: 'contact',
+};
 
 class OggehData {
   #data = {};
@@ -309,7 +327,7 @@ class OggehContent extends HTMLElement {
   static state = {
     router: false,
     meta: false,
-    nav: false,
+    contact: false,
     scripts: false,
   };
   static events = [];
@@ -333,16 +351,35 @@ class OggehContent extends HTMLElement {
   }
 
   async connectedCallback() {
-    const config = this.getAttribute('config');
-    switch (config) {
-      case 'router':
-        this.#setupRouter();
-        return;
-      case 'scripts':
-        this.#injectScripts();
-        return;
-    }
     let event;
+
+    const config = this.getAttribute('config');
+    if (config) {
+      if (!Object.values(OggehConfig).includes(config)) {
+        event = {
+          data: {
+            error: `Configuration ${config} not supported`,
+          },
+        };
+        this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
+          bubbles: true,
+          detail: event,
+        }));
+        return;
+      }
+      switch (config) {
+        case OggehConfig.ANTI_FLICKER:
+          this.#setupAntiFlicker();
+          return;
+        case OggehConfig.ROUTER:
+          this.#setupRouter();
+          return;
+        case OggehConfig.SCRIPTS:
+          this.#injectScripts();
+          return;
+      }
+    }
+
     let get = this.getAttribute('get');
     const custom = this.getAttribute('custom');
     if (!get) get = custom;
@@ -386,7 +423,7 @@ class OggehContent extends HTMLElement {
     let data;
     switch (method) {
       case 'getApp':
-        if (!['nav', 'slider'].includes(render)) {
+        if (!Object.values(OggehRender).includes(render)) {
           event = {
             data: {
               get,
@@ -449,35 +486,50 @@ class OggehContent extends HTMLElement {
         get,
         data,
       };
-      switch (render) {
-        case 'nav':
-          event.data = {nav: event.data.nav};
-          break;
-        case 'slider':
-          event.data = {slider: event.data.slider};
-          break;
-      }
       if (method === 'getApp') {
         this.#injectMeta(data);
         if (Array.isArray(data?.nav)) {
           switch (render) {
-            case 'nav':
-              this.#renderNavigation({get, data: data.nav, custom, event});
+            case OggehRender.META:
+              const meta = {...data.app.meta, title: data.app.title};
+              event.data = {meta};
+              this.#renderContent({get, data: meta, custom, event, render});
               break;
-            case 'slider':
-              this.#renderContent({get, data: data.slider, custom, event});
+            case OggehRender.NAV:
+              event.data = {nav: data.nav};
+              this.#renderNavigation({get, data: data.nav, custom, event, render});
+              break;
+            case OggehRender.SLIDER:
+              event.data = {slider: data.slider};
+              this.#renderContent({get, data: data.slider, custom, event, render});
+              break;
+            case OggehRender.LOCATIONS:
+              event.data = {locations: data.locations};
+              this.#renderContent({get, data: {list: data.locations}, custom, event, render});
+              break;
+            case OggehRender.SOCIAL:
+              event.data = {social: data.app.social};
+              const list = Object.entries(data.app.social).map(([provider, url]) => ({provider, url}));
+              this.#renderContent({get, data: {list}, custom, event, render});
+              break;
+            case OggehRender.CONTACT:
+              const contact = {...(data.contacts[0] || {}), ...(data.locations[0] || {})};
+              event.data = {contact};
+              this.#renderContent({get, data: contact, custom, event, render});
               break;
           }
         }
       } else if (Array.isArray(data)) {
-        // works only with data-oggeh-iterable
+        // works only with data-oggeh-repeat
         this.#renderList({get, data, custom, event});
       } else {
         if (data?.key) data.token = await this.oggeh.getFormToken(data.key);
-        // can handle oggeh-iterable template, as well as data-oggeh-iterable
+        // can handle oggeh-repeat template, as well as data-oggeh-repeat
         this.#renderContent({get, data, custom, event});
       }
     }
+
+    this.#renderContactForm();
 
     function getMethodName(value) {
       return value.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
@@ -488,10 +540,33 @@ class OggehContent extends HTMLElement {
     const url = new URL(location.href);
     if (['key', 'start-key', 'timestamp', 'keyword'].includes(param)) {
       const last = url.pathname.split('/').filter(p => !!p).pop();
-      if (!OggehRoutes.includes(last)) return last;
+      if (!Object.values(OggehRoutes).includes(last)) return last;
     }
     const params = new URLSearchParams(location.search);
     return params.get(param);
+  }
+
+  #setupAntiFlicker() {
+    if (document.getElementById(OggehAntiFlickerId)) return;
+    document.head.insertAdjacentHTML(
+      'beforeend',
+      `<style id="${OggehAntiFlickerId}" type="text/css" media="all">body::after{position:fixed;top:0;bottom:0;left:0;right:0;content:"";background:#fff;z-index:2147483647}</style>`
+    );
+  }
+
+  #removeAntiFlicker() {
+    if (!document.getElementById(OggehAntiFlickerId)) return;
+    document.head.removeChild(document.getElementById(OggehAntiFlickerId));
+  }
+
+  #ready({event, custom}) {
+    this.#removeAntiFlicker();
+    if (!event) return;
+    if (!custom) OggehContent.events.push(event);
+    this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
+      bubbles: true,
+      detail: event,
+    }));
   }
 
   #setupRouter() {
@@ -580,16 +655,21 @@ class OggehContent extends HTMLElement {
       e.preventDefault();
       const formData = new FormData(form);
       const data = Object.fromEntries(formData);
-      this.#processForm(el, form, data);
+      this.#processForm(form, data);
     });
   }
 
-  async #processForm(el, form, data) {
+  async #processForm(form, data, isContact = false) {
     const event = {
       process: 'form',
     };
     try {
-      const output = await this.oggeh.submitPageForm(data);
+      let output;
+      if (isContact) {
+        output = await this.oggeh.submitContactForm(data);
+      } else {
+        output = await this.oggeh.submitPageForm(data);
+      }
       if (this.oggeh.status === OggehStatus.ERROR) {
         event.error = this.oggeh.error;
         this.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
@@ -603,14 +683,14 @@ class OggehContent extends HTMLElement {
       event.error = error.message;
     }
     if (event.error) {
-      const alert = el.querySelector('[data-oggeh-form-error]');
+      const alert = document.body.querySelector('[data-oggeh-form-error]');
       if (alert) alert.style.setProperty('display', 'block', 'important');
       document.dispatchEvent(new CustomEvent(OggehEvent.ERROR, {
         bubbles: true,
         detail: event,
       }));
     } else {
-      const alert = el.querySelector('[data-oggeh-form-success]');
+      const alert = document.body.querySelector('[data-oggeh-form-success]');
       if (alert) alert.style.setProperty('display', 'block', 'important');
       document.dispatchEvent(new CustomEvent(OggehEvent.READY, {
         bubbles: true,
@@ -629,6 +709,7 @@ class OggehContent extends HTMLElement {
 
     function inject() {
       if (OggehContent.state.meta) return;
+      OggehContent.state.meta = true;
       if (document.head.querySelector('title')) document.head.querySelector('title').textContent = data.app.title;
       document.head.insertAdjacentHTML('afterbegin', `
         <meta name="keywords" content="${data.app.meta.keywords}">
@@ -636,7 +717,6 @@ class OggehContent extends HTMLElement {
         <meta name="og:title" content="${data.app.title}">
         <meta name="og:description" content="${data.app.meta.description}">
       `);
-      OggehContent.state.meta = true;
     }
   }
 
@@ -655,17 +735,17 @@ class OggehContent extends HTMLElement {
     return new Promise((resolve) => check(resolve));
   }
 
-  #renderNavigation({get, data, custom, event}) {
+  #renderNavigation({get, data, custom, event, render}) {
     const templates = {
       container: this.querySelector('template#oggeh-nav'),
       leaf: this.querySelector('template#oggeh-nav-leaf'),
       branch: this.querySelector('template#oggeh-nav-branch'),
-      link: this.querySelector('template#oggeh-link'),
     };
     if (!templates.container) {
       const event = {
         data: {
           get,
+          render,
           error: 'Missing required container template',
         },
       };
@@ -674,10 +754,11 @@ class OggehContent extends HTMLElement {
         detail: event,
       }));
       return;
-    } else if (!templates.leaf || !templates.branch || !templates.link) {
+    } else if (!(templates.leaf || templates.branch)) {
       const event = {
         data: {
           get,
+          render,
           error: 'Missing required navigation templates',
         },
       };
@@ -689,19 +770,15 @@ class OggehContent extends HTMLElement {
     }
     const navigationElement = constructNavigation();
     if (navigationElement) this.insertAdjacentElement('afterend', navigationElement);
-    OggehContent.state.nav = true;
 
-    if (!custom) OggehContent.events.push(event);
-    this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
-      bubbles: true,
-      detail: event,
-    }));
+    this.#ready({event, custom});
 
     function buildNavItems(items) {
       const fragment = document.createDocumentFragment();
       items.forEach((item, index) => {
         if (item.childs && item.childs.length > 0) {
-          addNavBranch(item, index);
+          const useBranch = addNavBranch(item, index);
+          if (!useBranch) addNavLeaf(item, index);
         } else {
           addNavLeaf(item, index);
         }
@@ -710,6 +787,7 @@ class OggehContent extends HTMLElement {
 
       function addNavBranch(item, index) {
         const branchTpl = templates.branch;
+        if (!branchTpl) return;
         const branchHTML = fillTemplate(branchTpl.innerHTML, item, {blockId: getBlockId(index)});
         const clone = document.createElement('div');
         clone.innerHTML = branchHTML;
@@ -717,10 +795,12 @@ class OggehContent extends HTMLElement {
         const slot = clone.querySelector('slot');
         if (slot) slot.parentNode.replaceChild(childFragment, slot);
         fragment.appendChild(clone.firstElementChild);
+        return true;
       }
 
       function addNavLeaf(item, index) {
         const leafTpl = templates.leaf;
+        if (!leafTpl) return;
         const leafHTML = fillTemplate(leafTpl.innerHTML, item, {blockId: getBlockId(index)});
         const clone = document.createElement('div');
         clone.innerHTML = leafHTML;
@@ -779,11 +859,7 @@ class OggehContent extends HTMLElement {
       }
     }
 
-    if (!custom) OggehContent.events.push(event);
-    this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
-      bubbles: true,
-      detail: event,
-    }));
+    this.#ready({event, custom});
 
     function constructContent() {
       const tpl = templates.container;
@@ -796,10 +872,10 @@ class OggehContent extends HTMLElement {
     }
   }
 
-  #renderContent({get, data, custom, event}) {
+  #renderContent({get, data, custom, event, render}) {
     const templates = {
       container: this.querySelector('template#oggeh-container'),
-      iterable: this.querySelector('template#oggeh-iterable'),
+      iterable: this.querySelector('template#oggeh-repeat'),
       rte: this.querySelector('template#oggeh-text'),
       photos: this.querySelector('template#oggeh-photos'),
       videos: this.querySelector('template#oggeh-videos'),
@@ -828,6 +904,7 @@ class OggehContent extends HTMLElement {
       const event = {
         data: {
           get,
+          render,
           error: 'Missing required container template',
         },
       };
@@ -840,6 +917,7 @@ class OggehContent extends HTMLElement {
       const event = {
         data: {
           get,
+          render,
           error: 'Data is not iterable',
         },
       };
@@ -863,11 +941,7 @@ class OggehContent extends HTMLElement {
       }
     }
 
-    if (!custom) OggehContent.events.push(event);
-    this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
-      bubbles: true,
-      detail: event,
-    }));
+    this.#ready({event, custom});
 
     function buildIterableItems(items) {
       const fragment = document.createDocumentFragment();
@@ -1084,13 +1158,30 @@ class OggehContent extends HTMLElement {
       } else if (Array.isArray(data?.blocks)) {
         fragment = buildBlocks(data.blocks);
       }
-      if (!fragment) return;
-      const slot = containerClone.querySelector('slot');
-      if (slot) slot.parentNode.replaceChild(fragment, slot);
+      if (fragment) {
+        const slot = containerClone.querySelector('slot');
+        if (slot) slot.parentNode.replaceChild(fragment, slot);
+      }
       const clone = document.createElement('div');
       clone.innerHTML = fillTemplate(containerClone.innerHTML, data, {blockId: getBlockId()});
       return Array.from(clone.childNodes).reverse();
     }
+  }
+
+  async #renderContactForm() {
+    if (OggehContent.state.contact) return;
+    OggehContent.state.contact = true;
+    const form = document.querySelector('[data-oggeh-form-contact]');
+    if (!form) return;
+    form.insertAdjacentHTML('beforeend', '<input type="hidden" name="key" value="contact">');
+    const token = await this.oggeh.getFormToken('contact');
+    form.insertAdjacentHTML('beforeend', `<input type="hidden" name="token" value="${token}">`);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData);
+      this.#processForm(form, data, true);
+    });
   }
 }
 
@@ -1173,7 +1264,7 @@ function fillTemplate(templateStr, data, { index = 0, blockId = '' } = {}) {
     if (modifier) {
       if (modifier.includes('is')) {
         const evaluate = modifier.match(/is\((.*)\)/)?.[1];
-        if (data[evaluate]) {
+        if (getValue(evaluate)) {
           return expression;
         } else {
           return '';
@@ -1260,7 +1351,7 @@ function fillTemplate(templateStr, data, { index = 0, blockId = '' } = {}) {
 }
 
 function processIterables(tpl, items) {
-  const nodes = tpl.querySelectorAll('[data-oggeh-iterable]');
+  const nodes = tpl.querySelectorAll('[data-oggeh-repeat]');
   nodes.forEach(node => {
     const parent = node.parentNode;
     const fragment = document.createDocumentFragment();
@@ -1271,7 +1362,7 @@ function processIterables(tpl, items) {
         const newVal = fillTemplate(attr.value, item, {index, blockId: getBlockId(index)});
         clone.setAttribute(attr.name, newVal);
       });
-      clone.removeAttribute('data-oggeh-iterable');
+      clone.removeAttribute('data-oggeh-repeat');
       fragment.appendChild(clone);
     });
     parent.insertBefore(fragment, node);
