@@ -18,15 +18,16 @@ const OggehEvent = {
 const OggehRoutes = ['page', 'news', 'article', 'albums', 'search', 'contact'];
 
 class OggehData {
+  #data = {};
   constructor() {
-    this.data = JSON.parse(localStorage.getItem('oggeh.data') || '{}');
+    this.#data = JSON.parse(localStorage.getItem('oggeh.data') || '{}');
   }
   get(key) {
-    return this.data[key];
+    return this.#data[key];
   }
   set(key, value) {
-    this.data = objectDeepMerge(this.data, {[key]: value});
-    localStorage.setItem('oggeh.data', JSON.stringify(this.data));
+    this.#data = objectDeepMerge(this.#data, {[key]: value});
+    localStorage.setItem('oggeh.data', JSON.stringify(this.#data));
   }
 }
 
@@ -41,7 +42,7 @@ class OggehSDK {
     this.error = '';
     this.data = new OggehData();
     if (!this.data.get('news')) this.data.set('news', []);
-    if (!window.oggeh) window.oggeh = {};
+    window.oggeh = window.oggeh|| {};
     window.oggeh.data = this.data;
     this.refetch(String(lang).split('-')[0]);
   }
@@ -78,6 +79,7 @@ class OggehSDK {
         this.error = data;
         return;
       }
+      data.slider = {list: data.slider};
       this.data.set('news', data.news);
       this.status = OggehStatus.SUCCESS;
       return data;
