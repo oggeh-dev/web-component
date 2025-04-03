@@ -520,11 +520,11 @@ class OggehContent extends HTMLElement {
           }
         }
       } else if (Array.isArray(data)) {
-        // works only with data-oggeh-repeat
+        // can only handle data-oggeh-repeat attribute
         this.#renderList({get, data, custom, event});
       } else {
         if (data?.key) data.token = await this.oggeh.getFormToken(data.key);
-        // can handle oggeh-repeat template, as well as data-oggeh-repeat
+        // can only handle oggeh-repeat template
         this.#renderContent({get, data, custom, event});
       }
     }
