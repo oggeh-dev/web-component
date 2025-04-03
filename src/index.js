@@ -209,7 +209,7 @@ class OggehSDK {
       }
       if (!output.length) return;
       this.status = OggehStatus.SUCCESS;
-      return output.find((article) => article?.timestamp === timestamp);
+      return output.find((article) => article?.timestamp === start_date);
     } catch (error) {
       this.status = OggehStatus.ERROR;
       this.error = error.message;
@@ -486,7 +486,7 @@ class OggehContent extends HTMLElement {
 
   #getRequestParam(param) {
     const url = new URL(location.href);
-    if (param === 'key') {
+    if (['key', 'start-key', 'timestamp', 'keyword'].includes(param)) {
       const last = url.pathname.split('/').filter(p => !!p).pop();
       if (!OggehRoutes.includes(last)) return last;
     }
