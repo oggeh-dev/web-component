@@ -455,30 +455,25 @@ class OggehContent extends HTMLElement {
           event.data = {slider: event.data.slider};
           break;
       }
-      if (!custom) OggehContent.events.push(event);
-      this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
-        bubbles: true,
-        detail: event,
-      }));
       if (method === 'getApp') {
         this.#injectMeta(data);
         if (Array.isArray(data?.nav)) {
           switch (render) {
             case 'nav':
-              this.#renderNavigation(data.nav);
+              this.#renderNavigation({get, data: data.nav, custom, event});
               break;
             case 'slider':
-              this.#renderContent(get, data.slider);
+              this.#renderContent({get, data: data.slider, custom, event});
               break;
           }
         }
       } else if (Array.isArray(data)) {
         // works only with data-oggeh-iterable
-        this.#renderList(get, data);
+        this.#renderList({get, data, custom, event});
       } else {
         if (data?.key) data.token = await this.oggeh.getFormToken(data.key);
-        // can handle oggeh-iterable template
-        this.#renderContent(get, data);
+        // can handle oggeh-iterable template, as well as data-oggeh-iterable
+        this.#renderContent({get, data, custom, event});
       }
     }
 
@@ -658,7 +653,7 @@ class OggehContent extends HTMLElement {
     return new Promise((resolve) => check(resolve));
   }
 
-  #renderNavigation(data) {
+  #renderNavigation({get, data, custom, event}) {
     const templates = {
       container: this.querySelector('template#oggeh-nav'),
       leaf: this.querySelector('template#oggeh-nav-leaf'),
@@ -668,7 +663,7 @@ class OggehContent extends HTMLElement {
     if (!templates.container) {
       const event = {
         data: {
-          get: 'app',
+          get,
           error: 'Missing required container template',
         },
       };
@@ -680,7 +675,7 @@ class OggehContent extends HTMLElement {
     } else if (!templates.leaf || !templates.branch || !templates.link) {
       const event = {
         data: {
-          get: 'app',
+          get,
           error: 'Missing required navigation templates',
         },
       };
@@ -693,6 +688,12 @@ class OggehContent extends HTMLElement {
     const navigationElement = constructNavigation();
     if (navigationElement) this.insertAdjacentElement('afterend', navigationElement);
     OggehContent.state.nav = true;
+
+    if (!custom) OggehContent.events.push(event);
+    this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
+      bubbles: true,
+      detail: event,
+    }));
 
     function buildNavItems(items) {
       const fragment = document.createDocumentFragment();
@@ -734,7 +735,7 @@ class OggehContent extends HTMLElement {
     }
   }
 
-  #renderList(get, data) {
+  #renderList({get, data, custom, event}) {
     const templates = {
       container: this.querySelector('template#oggeh-container'),
     };
@@ -776,6 +777,12 @@ class OggehContent extends HTMLElement {
       }
     }
 
+    if (!custom) OggehContent.events.push(event);
+    this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
+      bubbles: true,
+      detail: event,
+    }));
+
     function constructContent() {
       const tpl = templates.container;
       const containerClone = document.importNode(tpl.content, true);
@@ -787,7 +794,7 @@ class OggehContent extends HTMLElement {
     }
   }
 
-  #renderContent(get, data) {
+  #renderContent({get, data, custom, event}) {
     const templates = {
       container: this.querySelector('template#oggeh-container'),
       iterable: this.querySelector('template#oggeh-iterable'),
@@ -853,6 +860,12 @@ class OggehContent extends HTMLElement {
         }
       }
     }
+
+    if (!custom) OggehContent.events.push(event);
+    this.dispatchEvent(new CustomEvent(OggehEvent.READY, {
+      bubbles: true,
+      detail: event,
+    }));
 
     function buildIterableItems(items) {
       const fragment = document.createDocumentFragment();
