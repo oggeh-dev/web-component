@@ -105,7 +105,7 @@ This is a free [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/
   </template>
 </oggeh-content>
 ```
-3. Page blocks templates also available (_[learn more](#)_).
+3. Page blocks templates also available (_[learn more](https://github.com/oggeh-dev/web-component/wiki/Templates)_).
 
 ### Notes:
 
