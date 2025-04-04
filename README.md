@@ -8,7 +8,7 @@ This is a free [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/
 
 ## Getting Started
 
-1. First, you need to configure your App API Key at the `<head>` tag:
+1. First, you need to configure your App API Key at the end of the `<head>` tag:
 ```html
 <script>
   window.oggeh = window.oggeh || {
@@ -83,6 +83,7 @@ This is a free [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/
   | `news` | | `start-date`, `limit` | `<oggeh-content get="news" start-date="" limit="4"></oggeh-content>` |
   | `news-article` | `timestamp` | | `<oggeh-content get="news-article" timestamp=""></oggeh-content>` |
   | `news-related` | | `timestamp`, `limit` | `<oggeh-content get="news-related" timestamp=""></oggeh-content>` |
+3. `custom`: Accepts a custom method defined at the global `oggeh` object (_see [Custom Methods](https://github.com/oggeh-dev/web-component/wiki/CustomMethods)_).
 
 ## Supported Templates
 
