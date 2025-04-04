@@ -214,3 +214,7 @@ This is a free [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/
 ## API Documentation
 
 See [API Reference](https://docs.oggeh.com/#reference-section) for additional details on available values for _select_ attribute on each API Method.
+
+## Credits
+
+Copyright(c) 2025 OGGEH, Inc
