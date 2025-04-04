@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This is a free [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) that introduces our custom element `<oggeh-content />` for automating our Content Delivery API. Perfect for skills limited to HTML only.
+This is a free [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) that introduces our custom element `<oggeh-content></oggeh-content>` for automating our Content Delivery API. Perfect for skills limited to HTML only.
 
 > You need a Developer Account to obtain your App API Keys, if you don't have an account, [create](https://account.oggeh.com/request) one now.
 
