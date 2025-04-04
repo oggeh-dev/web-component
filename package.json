@@ -1,11 +1,11 @@
 {
   "name": "@oggeh/web-component",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Web Component implementation for OGGEH Cloud Platform",
-  "main": "./dist/index.js",
+  "main": "./dist/oggeh.min.js",
   "browser": "./dist/oggeh.min.js",
   "files": [
-    "dist/**/**/*"
+    "dist"
   ],
   "repository": "https://github.com/oggeh-dev/web-component.git",
   "author": "OGGEH, Inc",
