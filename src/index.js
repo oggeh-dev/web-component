@@ -45,6 +45,7 @@ class OggehData {
     this.#data = JSON.parse(this.#api.getItem(this.#key) || '{}');
   }
   get(key, {maxRetries = 50, interval = 100} = {}) {
+    this.#data = JSON.parse(this.#api.getItem(this.#key) || '{}');
     if (!maxRetries) return Promise.resolve(this.#data[key]);
     return waitFor(() => this.#data[key], {maxRetries, interval});
   }
