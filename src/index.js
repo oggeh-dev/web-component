@@ -36,21 +36,24 @@ const OggehRender = {
 };
 
 class OggehData {
+  #sdk;
   #data = {};
-  constructor() {
-    this.#data = JSON.parse(localStorage.getItem('oggeh.data') || '{}');
+  constructor(sdk = sessionStorage) {
+    // TODO: use sessionStorage instead for caching API responses
+    // TODO: only use localStorage for news pagination purposes
+    this.#sdk = sdk;
+    this.#data = JSON.parse(this.#sdk.getItem('oggeh.data') || '{}');
   }
   get(key) {
     return this.#data[key];
   }
   set(key, value) {
     this.#data = objectDeepMerge(this.#data, {[key]: value});
-    localStorage.setItem('oggeh.data', JSON.stringify(this.#data));
+    this.#sdk.setItem('oggeh.data', JSON.stringify(this.#data));
   }
 }
 
 class OggehSDK {
-
   constructor({api_key, sandbox_key = '', domain = location.hostname, endpoint = 'https://api.oggeh.com', lang = 'en'}) {
     this.api_key = api_key;
     this.sandbox_key = sandbox_key;
@@ -58,10 +61,11 @@ class OggehSDK {
     this.endpoint = endpoint;
     this.status = OggehStatus.IDLE;
     this.error = '';
-    this.data = new OggehData();
-    if (!this.data.get('news')) this.data.set('news', []);
+    this.cache = new OggehData();
+    this.newsPagination = new OggehData(localStorage);
+    if (!this.newsPagination.get('news.pagination')) this.newsPagination.set('news.pagination', []);
     window.oggeh = window.oggeh|| {};
-    window.oggeh.data = this.data;
+    window.oggeh.data = this.cache;
     this.refetch(String(lang).split('-')[0]);
   }
 
@@ -98,7 +102,7 @@ class OggehSDK {
         return;
       }
       data.slider = {list: data.slider};
-      this.data.set('news', data.news);
+      this.newsPagination.set('news.pagination', data.news.map(({timestamp}) => timestamp));
       this.status = OggehStatus.SUCCESS;
       return data;
     } catch (error) {
@@ -238,7 +242,7 @@ class OggehSDK {
   async getNews(start_date, limit = 2) {
     this.status = OggehStatus.PENDING;
     try {
-      const start = start_date && this.data.get('news').length ? this.data.get('news').findIndex((article) => article?.timestamp === start_date) : 0;
+      const start = start_date && this.newsPagination.get('news.pagination').length ? this.newsPagination.get('news.pagination').findIndex((timestamp) => timestamp === start_date) : 0;
       const list = await this.oggeh
         .get({ method: 'get.news', ...(start_date ? {start_date} : {}), limit, select: 'timestamp,subject,header,cover,tags' })
         .promise();
@@ -247,10 +251,11 @@ class OggehSDK {
         this.error = list;
         return;
       }
-      this.data.set('news', list);
+      this.newsPagination.set('news.pagination', list.map(({timestamp}) => timestamp));
+      const pagination = this.newsPagination.get('news.pagination');
+      const previous = pagination[start - limit];
+      const next = pagination[pagination.length - 1];
       this.status = OggehStatus.SUCCESS;
-      const previous = this.data.get('news')[start - limit]?.timestamp;
-      const next = list[list.length - 1]?.timestamp;
       return {list, previous, next};
     } catch (error) {
       this.status = OggehStatus.ERROR;
@@ -261,7 +266,7 @@ class OggehSDK {
 
   async getNewsRelated(timestamp, limit = 4) {
     const output = await this.oggeh
-      .get({ method: 'get.news.related', timestamp: timestamp || this.data.get('news')?.[0]?.timestamp || getDefaultTimestamp(), limit, select: 'timestamp,subject,header,cover,tags' })
+      .get({ method: 'get.news.related', timestamp: timestamp || this.newsPagination.get('news.pagination')?.[0] || getDefaultTimestamp(), limit, select: 'timestamp,subject,header,cover,tags' })
       .promise();
     if (typeof output === 'string' || !output) {
       this.status = OggehStatus.ERROR;
