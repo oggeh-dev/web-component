@@ -1,14 +1,14 @@
 <svg width="205" height="20" viewBox="0 0 2050 200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-label="bundle size: 53KB (gzip 16.8KB)">
   <title>bundle size: 53KB (gzip 16.8KB)</title>
-  <linearGradient id="aFiWK" x2="0" y2="100%">
+  <linearGradient id="CCNNk" x2="0" y2="100%">
     <stop offset="0" stop-opacity=".1" stop-color="#EEE"/>
     <stop offset="1" stop-opacity=".1"/>
   </linearGradient>
-  <mask id="netSI"><rect width="2050" height="200" rx="30" fill="#FFF"/></mask>
-  <g mask="url(#netSI)">
+  <mask id="hzUGd"><rect width="2050" height="200" rx="30" fill="#FFF"/></mask>
+  <g mask="url(#hzUGd)">
     <rect width="854" height="200" fill="#555"/>
-    <rect width="1196" height="200" fill="#E43" x="854"/>
-    <rect width="2050" height="200" fill="url(#aFiWK)"/>
+    <rect width="1196" height="200" fill="#3C1" x="854"/>
+    <rect width="2050" height="200" fill="url(#CCNNk)"/>
   </g>
   <g aria-hidden="true" fill="#fff" text-anchor="start" font-family="Verdana,DejaVu Sans,sans-serif" font-size="110">
     <text x="190" y="148" textLength="624" fill="#000" opacity="0.25">bundle size</text>
