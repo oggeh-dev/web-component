@@ -1,6 +1,6 @@
 # OGGEH Web Component
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![bundle size](bundle-size.svg)
 
 This is a free [Web Component](https://developer.mozilla.org/en-US/docs/Web/API/Web_components) that introduces our custom element `<oggeh-content></oggeh-content>` for automating our Content Delivery API. Perfect for skills limited to HTML only.
 

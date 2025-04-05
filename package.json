@@ -11,12 +11,14 @@
   "author": "OGGEH, Inc",
   "license": "MIT",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --minify --sourcemap --target=es2020 --keep-names --outfile=dist/oggeh.min.js"
+    "build": "esbuild src/index.js --bundle --minify --sourcemap --target=es2020 --keep-names --outfile=dist/oggeh.min.js",
+    "badge": "node badge.js"
   },
   "dependencies": {
     "@oggeh/js-sdk": "^1.0.6"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "simple-rate-limiter": "^0.5.0"
   }
 }

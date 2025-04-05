@@ -196,6 +196,7 @@ __metadata:
   dependencies:
     "@oggeh/js-sdk": "npm:^1.0.6"
     esbuild: "npm:^0.25.0"
+    simple-rate-limiter: "npm:^0.5.0"
   languageName: unknown
   linkType: soft
 
@@ -470,5 +471,12 @@ __metadata:
   dependencies:
     mime-db: "npm:1.52.0"
   checksum: 10c0/82fb07ec56d8ff1fc999a84f2f217aa46cb6ed1033fefaabd5785b9a974ed225c90dc72fff460259e66b95b73648596dbcc50d51ed69cdf464af2d237d3149b2
+  languageName: node
+  linkType: hard
+
+"simple-rate-limiter@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "simple-rate-limiter@npm:0.5.0"
+  checksum: 10c0/550a4c27d335f3e7f68571b9b06b4167e94be7c21130a9ba45a7832245b2b7e53dfecc89fad4823e5b15a63adfac91329dcc9b10f6137e0a8fea35ff8fabc3bf
   languageName: node
   linkType: hard

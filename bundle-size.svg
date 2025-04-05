@@ -1,0 +1,20 @@
+<svg width="205" height="20" viewBox="0 0 2050 200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-label="bundle size: 53KB (gzip 16.8KB)">
+  <title>bundle size: 53KB (gzip 16.8KB)</title>
+  <linearGradient id="aFiWK" x2="0" y2="100%">
+    <stop offset="0" stop-opacity=".1" stop-color="#EEE"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <mask id="netSI"><rect width="2050" height="200" rx="30" fill="#FFF"/></mask>
+  <g mask="url(#netSI)">
+    <rect width="854" height="200" fill="#555"/>
+    <rect width="1196" height="200" fill="#E43" x="854"/>
+    <rect width="2050" height="200" fill="url(#aFiWK)"/>
+  </g>
+  <g aria-hidden="true" fill="#fff" text-anchor="start" font-family="Verdana,DejaVu Sans,sans-serif" font-size="110">
+    <text x="190" y="148" textLength="624" fill="#000" opacity="0.25">bundle size</text>
+    <text x="180" y="138" textLength="624">bundle size</text>
+    <text x="909" y="148" textLength="1096" fill="#000" opacity="0.25">53KB (gzip 16.8KB)</text>
+    <text x="899" y="138" textLength="1096">53KB (gzip 16.8KB)</text>
+  </g>
+  <image x="40" y="35" width="100" height="130" xlink:href="data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDUgMjQgMTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgNy4zMzR2OGg2LjY2NnYxLjMzMkgxMnYtMS4zMzJoMTJ2LThIMHptNi42NjYgNi42NjRINS4zMzR2LTRIMy45OTl2NEgxLjMzNVY4LjY2N2g1LjMzMXY1LjMzMXptNCAwdjEuMzM2SDguMDAxVjguNjY3aDUuMzM0djUuMzMyaC0yLjY2OXYtLjAwMXptMTIuMDAxIDBoLTEuMzN2LTRoLTEuMzM2djRoLTEuMzM1di00aC0xLjMzdjRoLTIuNjcxVjguNjY3aDguMDAydjUuMzMxek0xMC42NjUgMTBIMTJ2Mi42NjdoLTEuMzM1VjEweiIvPjwvc3ZnPgo="/>
+</svg>

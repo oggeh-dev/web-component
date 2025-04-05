@@ -17,3 +17,4 @@ dist
 .env
 *.log
 .vscode
+badge.js
