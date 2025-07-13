@@ -200,7 +200,7 @@ class OggehSDK {
     return {list: output};
   }
 
-  async getPage(key, model = '', scope = '') {
+  async getPage(key, model = '', scope = '', select = '', blockType = '') {
     if (!key) return;
     this.status = OggehStatus.PENDING;
     try {
@@ -213,8 +213,8 @@ class OggehSDK {
         return cachePage;
       }
       const {[key]: page, childs} = await this.oggeh
-        .get({ alias: key, method: 'get.page', key, ...(model ? {model} : {}), select: 'key,subject,header,cover,tags,blocks' })
-        .get({ alias: 'childs', method: 'get.pages', start_key: key, select: 'key,subject,header,cover,tags,blocks', block_type: 'rte' })
+        .get({ alias: key, method: 'get.page', key, ...(model ? {model} : {}), ...(blockType ? {block_type: blockType} : {}), select })
+        .get({ alias: 'childs', method: 'get.pages', start_key: key, ...(model ? {model} : {}), has_childs: true, include_childs: true, select, block_type: blockType || 'rte' })
         .promise();
       if (typeof page === 'string' || !page) {
         this.status = OggehStatus.ERROR;
@@ -514,10 +514,13 @@ class OggehContent extends HTMLElement {
     const startKey = this.getAttribute('start-key') || this.#getRequestParam('start-key') || '';
     const timestamp = Number(this.getAttribute('timestamp') || this.#getRequestParam('timestamp') || '0');
     const startDate = Number(this.getAttribute('start-date') || this.#getRequestParam('start-date') || '0');
-    const model = this.getAttribute('model') || this.#getRequestParam('model') || '';
+    const model = this.getAttribute('model') || this.#getRequestParam('model') || '*';
     const keyword = this.getAttribute('keyword') || this.#getRequestParam('keyword') || '';
     const limit = Number(this.getAttribute('limit') || this.#getRequestParam('limit') || '2');
     const scope = this.getAttribute('scope') || this.#getRequestParam('scope') || '';
+    const select = this.getAttribute('select') || this.#getRequestParam('select') || 'key,subject,header,cover,tags,blocks';
+    const blockType = this.getAttribute('block-type') || this.#getRequestParam('block-type') || '';
+    const cacheOnly = this.hasAttribute('cache-only');
 
     let data;
     switch (method) {
@@ -544,7 +547,7 @@ class OggehContent extends HTMLElement {
         data = await this.oggeh[method](startKey, limit);
         break;
       case 'getPage':
-        data = await this.oggeh[method](key, model, scope);
+        data = await this.oggeh[method](key, model, scope, select, blockType);
         break;
       case 'getPageRelated':
         data = await this.oggeh[method](key);
@@ -583,6 +586,7 @@ class OggehContent extends HTMLElement {
         detail: event,
       }));
     } else {
+      if (cacheOnly) return;
       event = {
         get,
         data,
