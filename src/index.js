@@ -208,6 +208,8 @@ class OggehSDK {
       const cachePage = await this.cache.get(cacheKey, {maxRetries: 0});
       if (cachePage) {
         this.status = OggehStatus.SUCCESS;
+        if (scope === 'childs') return {list: cachePage.childs};
+        if (scope in cachePage) return cachePage[scope];
         return cachePage;
       }
       const {[key]: page, childs} = await this.oggeh
@@ -225,8 +227,8 @@ class OggehSDK {
       }
       await this.cache.set(cacheKey, {...page, childs});
       this.status = OggehStatus.SUCCESS;
-      if (scope in page) return page[scope];
       if (scope === 'childs') return {list: childs};
+      if (scope in page) return page[scope];
       return {...page, childs};
     } catch (error) {
       this.status = OggehStatus.ERROR;
@@ -290,6 +292,7 @@ class OggehSDK {
       const cacheNewsArticle = await this.cache.get(cacheKey, {maxRetries: 0});
       if (cacheNewsArticle) {
         this.status = OggehStatus.SUCCESS;
+        if (scope in cacheNewsArticle) return cacheNewsArticle[scope];
         return cacheNewsArticle;
       }
       const output = await this.oggeh
