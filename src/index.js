@@ -1408,6 +1408,11 @@ function fillTemplate(templateStr, data, { index = 0, blockId = '' } = {}) {
           minute: "numeric",
           second: "numeric"
         }).format(new Date(Number(value) * 1000));
+      } else if (modifier.includes('trim')) {
+        if (!value) return '';
+        const maxWords = Number(modifier.match(/trim\((.*)\)/)?.[1] || '10');
+        const trimmed = value.trim().split(' ').filter((_, i) => i <= maxWords);
+        return `${trimmed.join(' ')}...`;
       } else {
         return value || getValue(modifier) || '';
       }
