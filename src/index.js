@@ -200,7 +200,7 @@ class OggehSDK {
     return {list: output};
   }
 
-  async getPage(key, model = '') {
+  async getPage(key, model = '', scope = '') {
     if (!key) return;
     this.status = OggehStatus.PENDING;
     try {
@@ -225,6 +225,8 @@ class OggehSDK {
       }
       await this.cache.set(cacheKey, {...page, childs});
       this.status = OggehStatus.SUCCESS;
+      if (scope in page) return page[scope];
+      if (scope === 'childs') return {list: childs};
       return {...page, childs};
     } catch (error) {
       this.status = OggehStatus.ERROR;
@@ -280,7 +282,7 @@ class OggehSDK {
     return;
   }
 
-  async getNewsArticle(start_date) {
+  async getNewsArticle(start_date, scope = '') {
     if (!start_date) return;
     this.status = OggehStatus.PENDING;
     try {
@@ -302,6 +304,7 @@ class OggehSDK {
       const result = output.find((article) => article?.timestamp === start_date);
       await this.cache.set(cacheKey, result);
       this.status = OggehStatus.SUCCESS;
+      if (scope in result) return result[scope];
       return result;
     } catch (error) {
       this.status = OggehStatus.ERROR;
@@ -511,6 +514,7 @@ class OggehContent extends HTMLElement {
     const model = this.getAttribute('model') || this.#getRequestParam('model') || '';
     const keyword = this.getAttribute('keyword') || this.#getRequestParam('keyword') || '';
     const limit = Number(this.getAttribute('limit') || this.#getRequestParam('limit') || '2');
+    const scope = this.getAttribute('scope') || this.#getRequestParam('scope') || '';
 
     let data;
     switch (method) {
@@ -537,7 +541,7 @@ class OggehContent extends HTMLElement {
         data = await this.oggeh[method](startKey, limit);
         break;
       case 'getPage':
-        data = await this.oggeh[method](key, model);
+        data = await this.oggeh[method](key, model, scope);
         break;
       case 'getPageRelated':
         data = await this.oggeh[method](key);
@@ -549,8 +553,10 @@ class OggehContent extends HTMLElement {
         data = await this.oggeh[method](startDate, limit);
         break;
       case 'getNewsArticle':
+        data = await this.oggeh[method](timestamp, scope);
+        break;
       case 'getNewsRelated':
-        data = await this.oggeh[method](timestamp);
+        data = await this.oggeh[method](timestamp, limit);
         break;
       default:
         if (typeof window.oggeh[method] === 'function') {
