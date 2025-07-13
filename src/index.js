@@ -1046,7 +1046,7 @@ class OggehContent extends HTMLElement {
       const fragment = document.createDocumentFragment();
       items.forEach((item, index) => {
         const tpl = templates.iterable;
-        const html = fillTemplate(tpl.innerHTML, item, {blockId: getBlockId(index)});
+        const html = fillTemplate(tpl.innerHTML, item, {index, blockId: getBlockId(index)});
         const clone = document.createElement('div');
         clone.innerHTML = html;
         fragment.appendChild(clone.firstElementChild);
