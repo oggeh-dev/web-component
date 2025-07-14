@@ -714,6 +714,10 @@ class OggehContent extends HTMLElement {
   }
 
   #loadTemplate(path) {
+    if (path === '/') {
+      location.reload();
+      return;
+    }
     const url = new URL(`${location.protocol}//${location.hostname}${path.startsWith('/') ? '' : '/'}${path}`);
     const tpl = url.pathname.split('/').filter(p => !!p).shift() || 'index';
     fetch(`/${tpl}.html`)
