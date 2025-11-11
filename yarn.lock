@@ -180,13 +180,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@oggeh/js-sdk@npm:^1.0.6":
-  version: 1.0.6
-  resolution: "@oggeh/js-sdk@npm:1.0.6"
+"@oggeh/js-sdk@npm:^1.0.7":
+  version: 1.0.7
+  resolution: "@oggeh/js-sdk@npm:1.0.7"
   dependencies:
-    form-data: "npm:^4.0.0"
+    form-data: "npm:^4.0.4"
     js-sha512: "npm:^0.8.0"
-  checksum: 10c0/daacb0a05504d626fd6977da464bd7a4c8610d7ad42dc921b20430a744315e8516ce6f97d3f69563fbdce38044ba4bf65fbc91a7ba00f1bc63a8561adfa77c17
+  checksum: 10c0/8eb048f84f37eecf10c5ecd59ca5341424011f4eddab9d064d4471e6eccfbb463e78e234099d3e6734937c359a054ea2b46fb64e771929300030dd49d62297a0
   languageName: node
   linkType: hard
 
@@ -194,7 +194,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@oggeh/web-component@workspace:."
   dependencies:
-    "@oggeh/js-sdk": "npm:^1.0.6"
+    "@oggeh/js-sdk": "npm:^1.0.7"
     esbuild: "npm:^0.25.0"
     simple-rate-limiter: "npm:^0.5.0"
   languageName: unknown
@@ -365,15 +365,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"form-data@npm:^4.0.0":
-  version: 4.0.2
-  resolution: "form-data@npm:4.0.2"
+"form-data@npm:^4.0.4":
+  version: 4.0.4
+  resolution: "form-data@npm:4.0.4"
   dependencies:
     asynckit: "npm:^0.4.0"
     combined-stream: "npm:^1.0.8"
     es-set-tostringtag: "npm:^2.1.0"
+    hasown: "npm:^2.0.2"
     mime-types: "npm:^2.1.12"
-  checksum: 10c0/e534b0cf025c831a0929bf4b9bbe1a9a6b03e273a8161f9947286b9b13bf8fb279c6944aae0070c4c311100c6d6dbb815cd955dc217728caf73fad8dc5b8ee9c
+  checksum: 10c0/373525a9a034b9d57073e55eab79e501a714ffac02e7a9b01be1c820780652b16e4101819785e1e18f8d98f0aee866cc654d660a435c378e16a72f2e7cac9695
   languageName: node
   linkType: hard
 
